@@ -10,6 +10,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License along with TRACS. If not, see <http://www.gnu.org/licenses/>
  */
+
 // In general this is a macro to convolute 2 histograms, quite general
 // The best is to use it as an executable, the histos are saved into a root file
 // 
@@ -58,12 +59,11 @@
 
 //See "Visual explanations of convolution" in http://en.wikipedia.org/wiki/Convolution
 TH1D *H1DConvolution( TH1D *htf , TH1D *htct , Double_t Cend=0. , int tid=0) ; 
-TH1D *H1DConvolution( TH1D *htct  , Double_t Cend=0. , int tid=0, TString transferFun="NO_TF") ;
+TH1D *H1DConvolution( TH1D *htct  , Double_t Cend=0. , int tid=0) ; 
 TH1D *LPFilter( TH1D *htf , Double_t Cend ) ; 
 
-//std::mutex mtx_conv;           // mutex for critical section
+std::mutex mtx_conv;           // mutex for critical section
 int count;
-
 
 TH1D *LPFilter( TH1D *hin , Double_t Cend  ) {
 
@@ -90,7 +90,7 @@ TH1D *H1DConvolution( TH1D *htf , TH1D *htct , Double_t Cend , int tid) {
    //------------>Both input histograms should have the same bin width<-----------------
    
    //Here you can apply an extra LPFiltering
-   //if (Cend!=0) htct = LPFilter( htct , Cend );
+   //if (Cend!=0) htct = LPFilter( htct , Cend ); 
 
    //Convolute (commutative)
    //C(t) = Int[ tct(x) transferfunction(t-x) dx ]
@@ -157,19 +157,55 @@ TH1D *H1DConvolution( TH1D *htf , TH1D *htct , Double_t Cend , int tid) {
 
    }
 
+   gStyle->SetOptStat(0);
+   gStyle->SetHistLineWidth(2);
+   //hConv->SetLineColor(kRed) ;htct->SetLineColor(kBlack) ;htf->SetLineColor(kBlue) ;
+   
+   THStack *hs = new THStack();
+   //hs->Add(htf);
+   hs->Add(htct);
+   hs->Add(hConv);
+   TCanvas *c1=new TCanvas(); c1->cd();
+   hs->Draw("nostack");
+   //hs->GetXaxis()->SetRangeUser(-2.,10.);
+   hs->GetXaxis()->SetTitle("Time [ns]") ;
+
+   c1->SetGrid(1);
+
+   TLegend* legend = c1->BuildLegend();
+   legend->Draw();
+   c1->Update();
+   //   NOPDF for the moment
+//   c1->Print( "convolution.pdf" );
+ //too many files...
+/*
+    tftit.Form("conv_%d_%d.root", tid, count);
+   TFile *f=new TFile(tftit,"UPDATE");
+   hConv->Write();
+   //f->Close();
+   delete f;
+
+   #if EXE==1
+      tftit.Form("convolution_%d_%d.root", tid, count);
+      TFile *fout=new TFile(tftit,"UPDATE");
+      htct->Write();
+      hConv->Write();
+      //fout->Close();
+      delete fout;
+   #endif
+  count++; //for naming purposes
+*/
+
    return hConv;  
 
 }
 
-TH1D *H1DConvolution( TH1D *htct , Double_t Cend, int tid, TString transferFun) {
+TH1D *H1DConvolution( TH1D *htct , Double_t Cend, int tid) { 
    
    //mtx_conv.lock();
-
-   TFile  *ftf = new TFile(transferFun);
-   TH1D   *htf = (TH1D *) ftf->Get("htf");
+   TFile  *ftf = new TFile( "Centered_100ps_TransferFunction_Cividec_06052014.root");
+   TH1D   *htf = (TH1D *) ftf->Get("shtf");
    TH1D *hConv = H1DConvolution(htf,htct,Cend,tid);
-   hConv->SetDirectory(0);
-   ftf->Close();
    //mtx_conv.unlock();
    return hConv;
    

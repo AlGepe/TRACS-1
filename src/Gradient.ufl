@@ -1,0 +1,11 @@
+
+vector_element = VectorElement("Lagrange", triangle, 1)
+element = FiniteElement("Lagrange", triangle, 1)
+
+
+u = Coefficient(element)
+w = TrialFunction(vector_element)
+v = TestFunction(vector_element)
+
+a = inner(w, v)*dx
+L = inner(grad(u), v)*dx
